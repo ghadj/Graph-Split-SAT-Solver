@@ -1,7 +1,13 @@
 package io.github.ghadj.graphsplit;
 
 import java.io.*;
+import java.util.Scanner;
 
+/**
+ * Compile: javac -d ./bin src/io/github/ghadj/graphsplit/*.java
+ * 
+ * Run: java -cp ./bin io.github.ghadj.graphsplit.GraphSplit <0 or 1>
+ */
 public class GraphSplit {
     private int numberOfNodes;
     private double negativeEdgesPercent;
@@ -10,74 +16,9 @@ public class GraphSplit {
     private char[][] adjacencyMatrix;
     private char[][] signEdges;
     private int[][] variables;
+    private String cnf = null;
 
-    public static String positiveEdge(int x, int y) {
-        // example: assign x and y to the same set
-        // Set - #1 #2 #3
-        // node x 1 2 3
-        // node y 4 5 6
-        return new String((x + 0) + ' ' + (x + 1) + ' ' + (x + 2) + "0\n" + // (1 or 2 or 3)
-                (x + 0) + ' ' + (x + 1) + ' ' + (y + 2) + "0\n" + // (1 or 2 or 6)
-                (x + 0) + ' ' + (y + 1) + ' ' + (x + 2) + "0\n" + // (1 or 5 or 3)
-                (x + 0) + ' ' + (y + 1) + ' ' + (y + 2) + "0\n" + // (1 or 5 or 6)
-                (y + 0) + ' ' + (x + 1) + ' ' + (x + 2) + "0\n" + // (4 or 2 or 3)
-                (y + 0) + ' ' + (x + 1) + ' ' + (y + 2) + "0\n" + // (4 or 2 or 6)
-                (y + 0) + ' ' + (y + 1) + ' ' + (x + 2) + "0\n" + // (4 or 5 or 3)
-                (y + 0) + ' ' + (y + 1) + ' ' + (y + 2) + "0\n"); // (4 or 5 or 6)
-    }
-
-    // not (x and y) = not(x) or not(y)
-    public static String negativeEdge(int x, int y) {
-        // example: assign x and y to the different set
-        // Set - #1 #2 #3
-        // node x 1 2 3
-        // node y 4 5 6
-        return new String(-(x + 0) + ' ' + -(y + 1) + "0\n" + // (not(1) or not(4))
-                -(x + 1) + ' ' + -(y + 2) + "0\n" + // (not(2) or not(5))
-                -(x + 2) + ' ' + -(y + 3) + "0\n"); // (not(3) or not(6))
-    }
-
-    public static String assignedToOneSetOnly(int x) {
-        // example: assign x to one set only
-        // Set - #1 #2 #3
-        // node x 1 2 3
-        return new String((x + 0) + ' ' + (x + 1) + ' ' + (x + 2) + "0\n" + // (1 or 2 or 3))
-                -(x + 0) + ' ' + -(x + 1) + "0\n" + // (not(1) or not(2))
-                -(x + 0) + ' ' + -(x + 3) + "0\n" + // (not(1) or not(3))
-                -(x + 1) + ' ' + -(x + 3) + "0\n"); // (not(2) or not(3))
-    }
-
-    public static String atLeastOneElement(int[][] variables) {
-        // example: assign at least one element to each set
-        // Set - #1 #2 #3
-        // node x 1 2 3
-        // node y 4 5 6
-        // node z 7 8 9
-        StringBuilder str = new StringBuilder();
-        for (int j = 0; j < 3; j++) {
-            for (int i = 0; i < variables.length; i++)
-                str.append(variables[i][j] + " "); // (1 or 4 or 5) and (...) ...
-            str.append("0\n");
-        }
-        return str.toString();
-    }
-
-    public static String readFilename() throws IOException {
-        BufferedReader br = null;
-        String filename = null;
-
-        br = new BufferedReader(new InputStreamReader(System.in));
-
-        System.out.println("Give path to file containing graph info:");
-        filename = br.readLine();
-
-        if (br != null)
-            br.close();
-
-        return filename;
-    }
-
-    public void readParameters(String filename) throws FileNotFoundException, IOException {
+    public GraphSplit(String filename) throws FileNotFoundException, IOException {
         File file = new File(filename);
         BufferedReader br = new BufferedReader(new FileReader(file));
         // number of nodes
@@ -103,6 +44,74 @@ public class GraphSplit {
             signEdges[i] = br.readLine().toCharArray();
 
         br.close();
+
+        setVariables();
+    }
+
+    public static String positiveEdge(int x, int y) {
+        // example: assign x and y to the same set
+        // Set - #1 #2 #3
+        // node x 1 2 3
+        // node y 4 5 6
+        return new String((x + 0) + " " + (x + 1) + " " + (x + 2) + " 0\n" + // (1 or 2 or 3)
+                (x + 0) + " " + (x + 1) + " " + (y + 2) + " 0\n" + // (1 or 2 or 6)
+                (x + 0) + " " + (y + 1) + " " + (x + 2) + " 0\n" + // (1 or 5 or 3)
+                (x + 0) + " " + (y + 1) + " " + (y + 2) + " 0\n" + // (1 or 5 or 6)
+                (y + 0) + " " + (x + 1) + " " + (x + 2) + " 0\n" + // (4 or 2 or 3)
+                (y + 0) + " " + (x + 1) + " " + (y + 2) + " 0\n" + // (4 or 2 or 6)
+                (y + 0) + " " + (y + 1) + " " + (x + 2) + " 0\n" + // (4 or 5 or 3)
+                (y + 0) + " " + (y + 1) + " " + (y + 2) + " 0\n"); // (4 or 5 or 6)
+    }
+
+    // not (x and y) = not(x) or not(y)
+    public static String negativeEdge(int x, int y) {
+        // example: assign x and y to the different set
+        // Set - #1 #2 #3
+        // node x 1 2 3
+        // node y 4 5 6
+        return new String(-(x + 0) + " " + -(y + 1) + " 0\n" + // (not(1) or not(4))
+                -(x + 1) + " " + -(y + 2) + " 0\n" + // (not(2) or not(5))
+                -(x + 2) + " " + -(y + 3) + " 0\n"); // (not(3) or not(6))
+    }
+
+    public static String assignedToOneSetOnly(int x) {
+        // example: assign x to one set only
+        // Set - #1 #2 #3
+        // node x 1 2 3
+        return new String((x + 0) + " " + (x + 1) + " " + (x + 2) + " 0\n" + // (1 or 2 or 3))
+                -(x + 0) + " " + -(x + 1) + " 0\n" + // (not(1) or not(2))
+                -(x + 0) + " " + -(x + 3) + " 0\n" + // (not(1) or not(3))
+                -(x + 1) + " " + -(x + 3) + " 0\n"); // (not(2) or not(3))
+    }
+
+    public static String atLeastOneElement(int[][] variables) {
+        // example: assign at least one element to each set
+        // Set - #1 #2 #3
+        // node x 1 2 3
+        // node y 4 5 6
+        // node z 7 8 9
+        StringBuilder str = new StringBuilder();
+        for (int j = 0; j < 3; j++) {
+            for (int i = 0; i < variables.length; i++)
+                str.append(variables[i][j] + " "); // (1 or 4 or 7) and (...) ...
+            str.append("0\n");
+        }
+        return str.toString();
+    }
+
+    public static String readFilename() throws IOException {
+        BufferedReader br = null;
+        String filename = null;
+
+        br = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Give path to file containing graph info:");
+        filename = br.readLine();
+
+        if (br != null)
+            br.close();
+
+        return filename;
     }
 
     // @TODO
@@ -110,15 +119,19 @@ public class GraphSplit {
         return true;
     }
 
-    // @TODO
-    private static void setVariables() {
+    private void setVariables() {
+        variables = new int[numberOfNodes][3];
+        int var = 1;
+        for (int i = 0; i < numberOfNodes; i++)
+            for (int j = 0; j < 3; j++)
+                variables[i][j] = var++;
     }
 
     private int getBaseCase(int x) {
         return variables[x][0];
     }
 
-    public String generateCNF() {
+    public void generateCNF() {
         StringBuilder str = new StringBuilder();
         str.append(atLeastOneElement(this.variables));
         for (int i = 0; i < numberOfNodes; i++) {
@@ -130,20 +143,44 @@ public class GraphSplit {
                     else if (signEdges[i][j] == '-')
                         str.append(negativeEdge(getBaseCase(i), getBaseCase(j)));
         }
-        return null;
+        this.cnf = str.toString();
     }
 
+    public void solve() throws IOException {
+        this.generateCNF();
+        writeCNF(this.cnf, "output.cnf");
+        String output = execCmd(null);
+    }
+
+    public static void writeCNF(String str, String filename) throws IOException {
+        Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename), "utf-8"));
+        writer.write(str);
+        writer.close();
+    }
+
+    public static String execCmd(String cmd) throws java.io.IOException {
+        @SuppressWarnings("resource")
+		Scanner s = new Scanner(Runtime.getRuntime().exec(cmd).getInputStream()).useDelimiter("\\A");
+        String output = s.hasNext() ? s.next() : "";
+        return output;
+    }
+
+    // @TODO
+    // public generate graph()
+
     public static void main(String[] args) {
+        if (args.length <= 0) {
+            System.out.println("Error: No arguments given.");
+            return;
+        }
         try {
             if (Integer.parseInt(args[0]) == 0) {
-
                 String filename = readFilename();
                 if (filename == null)
                     return;
-                GraphSplit g = new GraphSplit();
-                g.readParameters(filename);
-                String cnf = g.generateCNF();
-
+                GraphSplit g = new GraphSplit(filename);
+                g.solve();
+                System.out.println(g.cnf);
             } else if (Integer.parseInt(args[0]) == 1) {
 
             }

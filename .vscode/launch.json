@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - GraphSplit",
+            "request": "launch",
+            "mainClass": "io.github.ghadj.graphsplit.GraphSplit",
+            "projectName": "Graph-Split-SAT-Solver"
+        }
+    ]
+}
