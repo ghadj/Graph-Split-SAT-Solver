@@ -38,12 +38,12 @@ public class GraphSplit {
         // Adjacency matrix
         adjacencyMatrix = new char[numberOfNodes][];
         for (int i = 0; i < numberOfNodes; i++)
-            adjacencyMatrix[i] = br.readLine().toCharArray();
+            adjacencyMatrix[i] = br.readLine().replaceAll(" ", "").toCharArray();
 
         // sign of edges matrix
         signEdges = new char[numberOfNodes][];
         for (int i = 0; i < numberOfNodes; i++)
-            signEdges[i] = br.readLine().toCharArray();
+            signEdges[i] = br.readLine().replaceAll(" ", "").toCharArray();
 
         br.close();
 
@@ -71,7 +71,7 @@ public class GraphSplit {
         // Set - #1 #2 #3
         // node x 1 2 3
         // node y 4 5 6
-        return new String(-(x + 0) + " " + -(y + 1) + " 0\n" + // (not(1) or not(4))
+        return new String(-(x + 0) + " " + -(y + 0) + " 0\n" + // (not(1) or not(4))
                 -(x + 1) + " " + -(y + 1) + " 0\n" + // (not(2) or not(5))
                 -(x + 2) + " " + -(y + 2) + " 0\n"); // (not(3) or not(6))
     }
@@ -160,12 +160,12 @@ public class GraphSplit {
 
         String s = result.substring(result.indexOf("\ns ") + 3, result.indexOf("\n", result.indexOf("\ns ") + 3));
         System.out.println("\nResult: " + s);
-        
+
         if (s.equals("UNSATISFIABLE"))
             return false;
 
-        String v = result.substring(result.indexOf("\nv ") + 3, result.indexOf(" 0\n", result.indexOf("\nv ")));
-        printSolution(v);
+        String v = result.substring(result.indexOf("\nv ") + 1, result.indexOf(" 0\n", result.indexOf("\nv ")));
+        printSolution(v.replaceAll("v", ""));
         return true;
     }
 
@@ -214,7 +214,6 @@ public class GraphSplit {
                     return;
                 GraphSplit g = new GraphSplit(filename);
                 g.solve();
-                // System.out.println(g.cnf);
             } else if (Integer.parseInt(args[0]) == 1) {
 
             }
