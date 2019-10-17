@@ -9,6 +9,7 @@ import java.util.Scanner;
  * Run: java -cp ./bin io.github.ghadj.graphsplit.GraphSplit <0 or 1>
  */
 public class GraphSplit {
+    static final String PATH_SAT_SOLVER = "../lingeling_solver/lingeling";
     private int numberOfNodes;
     private double negativeEdgesPercent;
     private double positiveEdgesPercent;
@@ -17,6 +18,7 @@ public class GraphSplit {
     private char[][] signEdges;
     private int[][] variables;
     private String cnf = null;
+    private int numClauses = 0;
 
     public GraphSplit(String filename) throws FileNotFoundException, IOException {
         File file = new File(filename);
@@ -70,8 +72,8 @@ public class GraphSplit {
         // node x 1 2 3
         // node y 4 5 6
         return new String(-(x + 0) + " " + -(y + 1) + " 0\n" + // (not(1) or not(4))
-                -(x + 1) + " " + -(y + 2) + " 0\n" + // (not(2) or not(5))
-                -(x + 2) + " " + -(y + 3) + " 0\n"); // (not(3) or not(6))
+                -(x + 1) + " " + -(y + 1) + " 0\n" + // (not(2) or not(5))
+                -(x + 2) + " " + -(y + 2) + " 0\n"); // (not(3) or not(6))
     }
 
     public static String assignedToOneSetOnly(int x) {
@@ -80,8 +82,8 @@ public class GraphSplit {
         // node x 1 2 3
         return new String((x + 0) + " " + (x + 1) + " " + (x + 2) + " 0\n" + // (1 or 2 or 3))
                 -(x + 0) + " " + -(x + 1) + " 0\n" + // (not(1) or not(2))
-                -(x + 0) + " " + -(x + 3) + " 0\n" + // (not(1) or not(3))
-                -(x + 1) + " " + -(x + 3) + " 0\n"); // (not(2) or not(3))
+                -(x + 0) + " " + -(x + 2) + " 0\n" + // (not(1) or not(3))
+                -(x + 1) + " " + -(x + 2) + " 0\n"); // (not(2) or not(3))
     }
 
     public static String atLeastOneElement(int[][] variables) {
@@ -134,22 +136,54 @@ public class GraphSplit {
     public void generateCNF() {
         StringBuilder str = new StringBuilder();
         str.append(atLeastOneElement(this.variables));
+        numClauses += 3;
         for (int i = 0; i < numberOfNodes; i++) {
             str.append(assignedToOneSetOnly(getBaseCase(i)));
+            numClauses += 4;
             for (int j = 0; j < numberOfNodes; j++)
                 if (j >= i)
-                    if (signEdges[i][j] == '+')
+                    if (signEdges[i][j] == '+') {
                         str.append(positiveEdge(getBaseCase(i), getBaseCase(j)));
-                    else if (signEdges[i][j] == '-')
+                        numClauses += 8;
+                    } else if (signEdges[i][j] == '-') {
                         str.append(negativeEdge(getBaseCase(i), getBaseCase(j)));
+                        numClauses += 3;
+                    }
         }
-        this.cnf = str.toString();
+        this.cnf = "p cnf " + (numberOfNodes * 3) + " " + numClauses + "\n" + str.toString();
     }
 
-    public void solve() throws IOException {
+    public boolean solve() throws IOException {
         this.generateCNF();
         writeCNF(this.cnf, "output.cnf");
-        String output = execCmd(null);
+        String result = execCmd(PATH_SAT_SOLVER + " output.cnf");
+
+        String s = result.substring(result.indexOf("\ns ") + 3, result.indexOf("\n", result.indexOf("\ns ") + 3));
+        System.out.println("\nResult: " + s);
+        
+        if (s.equals("UNSATISFIABLE"))
+            return false;
+
+        String v = result.substring(result.indexOf("\nv ") + 3, result.indexOf(" 0\n", result.indexOf("\nv ")));
+        printSolution(v);
+        return true;
+    }
+
+    public void printSolution(String v) {
+        Scanner scanner = new Scanner(v);
+        for (int i = 0; i < numberOfNodes && scanner.hasNext(); i++)
+            for (int j = 0; j < 3 && scanner.hasNext(); j++)
+                variables[i][j] = scanner.nextInt();
+        scanner.close();
+
+        for (int i = 0; i < 3; i++) {
+            System.out.print("{ ");
+            for (int j = 0; j < numberOfNodes; j++)
+                if (variables[j][i] >= 0)
+                    System.out.print((j + 1) + " ");
+            System.out.print("} ");
+        }
+        System.out.println();
     }
 
     public static void writeCNF(String str, String filename) throws IOException {
@@ -160,8 +194,8 @@ public class GraphSplit {
 
     public static String execCmd(String cmd) throws java.io.IOException {
         @SuppressWarnings("resource")
-		Scanner s = new Scanner(Runtime.getRuntime().exec(cmd).getInputStream()).useDelimiter("\\A");
-        String output = s.hasNext() ? s.next() : "";
+        Scanner scanner = new Scanner(Runtime.getRuntime().exec(cmd).getInputStream()).useDelimiter("\\A");
+        String output = scanner.hasNext() ? scanner.next() : "";
         return output;
     }
 
@@ -180,7 +214,7 @@ public class GraphSplit {
                     return;
                 GraphSplit g = new GraphSplit(filename);
                 g.solve();
-                System.out.println(g.cnf);
+                // System.out.println(g.cnf);
             } else if (Integer.parseInt(args[0]) == 1) {
 
             }
