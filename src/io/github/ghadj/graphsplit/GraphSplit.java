@@ -1,6 +1,17 @@
 package io.github.ghadj.graphsplit;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.util.Arrays;
+import java.util.Random;
 import java.util.Scanner;
 
 /**
@@ -10,15 +21,36 @@ import java.util.Scanner;
  */
 public class GraphSplit {
     static final String PATH_SAT_SOLVER = "../lingeling_solver/lingeling";
-    private int numberOfNodes;
-    private double negativeEdgesPercent;
-    private double positiveEdgesPercent;
-    private double density;
+    static final String GENERATED_GRAPH = "graph_out.txt";
+    private int numberOfNodes = 0;
+    private double negativeEdgesPercent = 0;
+    private double positiveEdgesPercent = 0;
+    private double density = 0;
     private char[][] adjacencyMatrix;
     private char[][] signEdges;
     private int[][] variables;
     private String cnf = null;
     private int numClauses = 0;
+
+    public GraphSplit(int numberOfNodes, double negativeEdgesPercent, double positiveEdgesPercent, double density)
+            throws IOException {
+        // number of nodes
+        this.numberOfNodes = numberOfNodes;
+
+        // percentage of negative edges
+        this.negativeEdgesPercent = negativeEdgesPercent;
+
+        // percentage of positive edges
+        this.positiveEdgesPercent = positiveEdgesPercent;
+
+        // density
+        this.density = density;
+
+        // Adjacency matrix & sign of edges matrix
+        generateGraph();
+        writeGraph();
+        setVariables();
+    }
 
     public GraphSplit(String filename) throws FileNotFoundException, IOException {
         File file = new File(filename);
@@ -46,7 +78,6 @@ public class GraphSplit {
             signEdges[i] = br.readLine().replaceAll(" ", "").toCharArray();
 
         br.close();
-
         setVariables();
     }
 
@@ -117,9 +148,9 @@ public class GraphSplit {
     }
 
     // @TODO
-    private static Boolean validParam() {
-        return true;
-    }
+    // private static Boolean validParam() {
+    // return true;
+    // }
 
     private void setVariables() {
         variables = new int[numberOfNodes][3];
@@ -133,7 +164,7 @@ public class GraphSplit {
         return variables[x][0];
     }
 
-    public void generateCNF() {
+    private void generateCNF() {
         StringBuilder str = new StringBuilder();
         str.append(atLeastOneElement(this.variables));
         numClauses += 3;
@@ -169,7 +200,7 @@ public class GraphSplit {
         return true;
     }
 
-    public void printSolution(String v) {
+    private void printSolution(String v) {
         Scanner scanner = new Scanner(v);
         for (int i = 0; i < numberOfNodes && scanner.hasNext(); i++)
             for (int j = 0; j < 3 && scanner.hasNext(); j++)
@@ -199,8 +230,96 @@ public class GraphSplit {
         return output;
     }
 
-    // @TODO
-    // public generate graph()
+    private void generateGraph() {
+        int edges = (int) Math.round(this.density * (this.numberOfNodes * (this.numberOfNodes - 1)) * 0.5);
+        // @TODO check valid values
+        int negativeEdges = (int) Math.ceil(edges * negativeEdgesPercent);
+        this.adjacencyMatrix = new char[numberOfNodes][numberOfNodes];
+        this.signEdges = new char[numberOfNodes][numberOfNodes];
+        // initialize arrays to no edges
+        for (int i = 0; i < numberOfNodes; i++) {
+            Arrays.fill(this.adjacencyMatrix[i], '0');
+            Arrays.fill(this.signEdges[i], '0');
+        }
+
+        int countEdges = 0;
+        int countNegEdge = 0;
+        Random rand = new Random();
+        int i,j;
+        // randomly assign negative edges
+        while (countEdges != edges && countNegEdge != negativeEdges) {
+            i = rand.nextInt(this.numberOfNodes);
+            j = rand.nextInt(this.numberOfNodes);
+
+            if (i != j && this.adjacencyMatrix[i][j] == '0') {
+                this.adjacencyMatrix[i][j] = '1';
+                this.adjacencyMatrix[j][i] = '1';
+                this.signEdges[i][j] = '-';
+                this.signEdges[j][i] = '-';
+                countNegEdge++;
+                countEdges++;
+            }
+        }
+
+        // randomly assign positive edges
+        while (countEdges != edges) {
+            i = rand.nextInt(this.numberOfNodes);
+            j = rand.nextInt(this.numberOfNodes);
+
+            if (i != j && this.adjacencyMatrix[i][j] == '0') {
+                this.adjacencyMatrix[i][j] = '1';
+                this.adjacencyMatrix[j][i] = '1';
+                this.signEdges[i][j] = '+';
+                this.signEdges[j][i] = '+';
+                countEdges++;
+            }
+        }
+    }
+
+    public static GraphSplit fromUser() throws IOException {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Give number of nodes: ");
+        int numberOfNodes = scanner.nextInt();
+
+        System.out.print("Give density of graph: ");
+        double density = scanner.nextDouble();
+
+        System.out.print("Give percentage of positive edges: ");
+        double pos = scanner.nextDouble();
+
+        System.out.print("Give percentage of negative edges: ");
+        double neg = scanner.nextDouble();
+
+        if (scanner != null)
+            scanner.close();
+
+        return new GraphSplit(numberOfNodes, neg, pos, density);
+    }
+
+    // private static void printMatrix(char[][] c, int s) {
+    // for (int i = 0; i < s; i++)
+    // System.out.println(c[i]);
+    // }
+
+    private void writeGraph() throws IOException {
+        Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(GENERATED_GRAPH), "utf-8"));
+        StringBuilder str = new StringBuilder();
+
+        str.append(this.numberOfNodes + "\n");
+        str.append(this.negativeEdgesPercent + "\n");
+        str.append(this.positiveEdgesPercent + "\n");
+        str.append(this.density + "\n");
+
+        for (int i = 0; i < this.numberOfNodes; i++)
+            str.append(String.valueOf(this.adjacencyMatrix[i]) + "\n");
+
+        for (int i = 0; i < this.numberOfNodes; i++)
+            str.append(String.valueOf(this.signEdges[i]) + "\n");
+
+        writer.write(str.toString());
+        writer.close();
+    }
 
     public static void main(String[] args) {
         if (args.length <= 0) {
@@ -215,7 +334,8 @@ public class GraphSplit {
                 GraphSplit g = new GraphSplit(filename);
                 g.solve();
             } else if (Integer.parseInt(args[0]) == 1) {
-
+                GraphSplit g = fromUser();
+                g.solve();
             }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
