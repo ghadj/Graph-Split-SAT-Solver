@@ -15,23 +15,45 @@ import java.util.Random;
 import java.util.Scanner;
 
 /**
+ * 
  * Compile: javac -d ./bin src/io/github/ghadj/graphsplit/*.java
  * 
  * Run: java -cp ./bin io.github.ghadj.graphsplit.GraphSplit <0 or 1>
+ * 
+ * @author Georgios Hadjiantonis
+ * @since 18-10-2019
  */
 public class GraphSplit {
-    static final String PATH_SAT_SOLVER = "../lingeling_solver/lingeling";
+    static final String PATH_SAT_SOLVER = "../lingeling_solver/lingeling"; // SAT solver outside Graph-Split-SAT-Solver
     static final String GENERATED_GRAPH = "graph_out.txt";
+    static final String CNF_OUT = "output.cnf";
     private int numberOfNodes = 0;
     private double negativeEdgesPercent = 0;
     private double positiveEdgesPercent = 0;
     private double density = 0;
-    private char[][] adjacencyMatrix;
-    private char[][] signEdges;
-    private int[][] variables;
+    private char[][] adjacencyMatrix = null;
+    private char[][] signEdges = null;
+    private int[][] variables = null;
     private String cnf = null;
     private int numClauses = 0;
 
+    /**
+     * Constructor of GraphSplit. Generates a random graph based on the parameters
+     * given. Writes the following parameters of the generated graph in txt file:
+     * Number of nodes, Percentage of negative-value edges, Percentage of
+     * positive-value edges, Graph density, Adjacency Matrix, Adjacency Matrix with
+     * sign of each edge.
+     * 
+     * The name of the txt is determined by the constant {@link #GENERATED_GRAPH}.
+     * 
+     * Assume that all parameters given are valid.
+     * 
+     * @param numberOfNodes        number of nodes.
+     * @param negativeEdgesPercent percentage of negative edges.
+     * @param positiveEdgesPercent percentage of positive edges.
+     * @param density              of the graph.
+     * @throws IOException
+     */
     public GraphSplit(int numberOfNodes, double negativeEdgesPercent, double positiveEdgesPercent, double density)
             throws IOException {
         // number of nodes
@@ -52,6 +74,19 @@ public class GraphSplit {
         setVariables();
     }
 
+    /**
+     * Constructor og GraphSplit. Reads from the file given the following parameters
+     * about the graph: Number of nodes, Percentage of negative-value edges,
+     * Percentage of positive-value edges, Graph density, Adjacency Matrix,
+     * Adjacency Matrix with sign of each edge. The parameters must be given in the
+     * above order, each ending with newline.
+     * 
+     * Assume that all parameters given are valid.
+     * 
+     * @param filename path to file containing the paameters of the graph.
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
     public GraphSplit(String filename) throws FileNotFoundException, IOException {
         File file = new File(filename);
         BufferedReader br = new BufferedReader(new FileReader(file));
@@ -81,6 +116,14 @@ public class GraphSplit {
         setVariables();
     }
 
+    /**
+     * Creates the clauses in CNF so that the nodes given x and y, which are
+     * connected via a positive edge, to be included in the same set.
+     * 
+     * @param x base case node to be included in the first set.
+     * @param y base case node to be included in the first set.
+     * @return string representation of clauses in CNF.
+     */
     public static String positiveEdge(int x, int y) {
         // example: assign x and y to the same set
         // Set - #1 #2 #3
@@ -96,7 +139,16 @@ public class GraphSplit {
                 (y + 0) + " " + (y + 1) + " " + (y + 2) + " 0\n"); // (4 or 5 or 6)
     }
 
-    // not (x and y) = not(x) or not(y)
+    /**
+     * Creates the clauses in CNF so that the nodes given x and y, which are
+     * connected via a negative edge, NOT to be included in the same set.
+     * 
+     * not (x and y) = not(x) or not(y)
+     * 
+     * @param x base case node to be included in the first set.
+     * @param y base case node to be included in the first set.
+     * @return string representation of clauses in CNF.
+     */
     public static String negativeEdge(int x, int y) {
         // example: assign x and y to the different set
         // Set - #1 #2 #3
@@ -107,6 +159,13 @@ public class GraphSplit {
                 -(x + 2) + " " + -(y + 2) + " 0\n"); // (not(3) or not(6))
     }
 
+    /**
+     * Creates the clauses in CNF so that the node given x to be included in exactly
+     * one set.
+     * 
+     * @param x base case node to be included in the first set.
+     * @return string representation of clauses in CNF.
+     */
     public static String assignedToOneSetOnly(int x) {
         // example: assign x to one set only
         // Set - #1 #2 #3
@@ -117,6 +176,13 @@ public class GraphSplit {
                 -(x + 1) + " " + -(x + 2) + " 0\n"); // (not(2) or not(3))
     }
 
+    /**
+     * Creates the clauses in CNF so that each set to have at least one node of the
+     * graph.
+     * 
+     * @param variables (3 per node).
+     * @return string representation of clauses in CNF.
+     */
     public static String atLeastOneElement(int[][] variables) {
         // example: assign at least one element to each set
         // Set - #1 #2 #3
@@ -132,6 +198,12 @@ public class GraphSplit {
         return str.toString();
     }
 
+    /**
+     * Reads the name of file which includes the graph parameters.
+     * 
+     * @return filename.
+     * @throws IOException
+     */
     public static String readFilename() throws IOException {
         BufferedReader br = null;
         String filename = null;
@@ -147,12 +219,18 @@ public class GraphSplit {
         return filename;
     }
 
-    // @TODO
-    // private static Boolean validParam() {
-    // return true;
-    // }
-
+    /**
+     * Initializes array {@link #variables}. Each row of the array corresponds to
+     * one node, represents the case that the specific node belongs to the
+     * corresponding set (column number).
+     */
     private void setVariables() {
+        // example:
+        // Set - #1 #2 #3
+        // node x 1 2 3
+        // node y 4 5 6
+        // node z 7 8 9
+        // ...
         variables = new int[numberOfNodes][3];
         int var = 1;
         for (int i = 0; i < numberOfNodes; i++)
@@ -160,46 +238,77 @@ public class GraphSplit {
                 variables[i][j] = var++;
     }
 
-    private int getBaseCase(int x) {
+    /**
+     * Returns the variable of the given node, in the case that it belongs to the
+     * first set.
+     * 
+     * @param x node.
+     * @return the variable of the given node, in the case that it belongs to the
+     *         first set.
+     */
+    private int getFirstVariable(int x) {
         return variables[x][0];
     }
 
+    /**
+     * Generates CNF clauses and sets cnf attribute, so that all the constraints of
+     * the problem are met.
+     * 
+     */
     private void generateCNF() {
         StringBuilder str = new StringBuilder();
         str.append(atLeastOneElement(this.variables));
         numClauses += 3;
         for (int i = 0; i < numberOfNodes; i++) {
-            str.append(assignedToOneSetOnly(getBaseCase(i)));
+            str.append(assignedToOneSetOnly(getFirstVariable(i)));
             numClauses += 4;
             for (int j = 0; j < numberOfNodes; j++)
                 if (j >= i)
                     if (signEdges[i][j] == '+') {
-                        str.append(positiveEdge(getBaseCase(i), getBaseCase(j)));
+                        str.append(positiveEdge(getFirstVariable(i), getFirstVariable(j)));
                         numClauses += 8;
                     } else if (signEdges[i][j] == '-') {
-                        str.append(negativeEdge(getBaseCase(i), getBaseCase(j)));
+                        str.append(negativeEdge(getFirstVariable(i), getFirstVariable(j)));
                         numClauses += 3;
                     }
         }
         this.cnf = "p cnf " + (numberOfNodes * 3) + " " + numClauses + "\n" + str.toString();
     }
 
+    /**
+     * Generates the cnf clauses, writes the clauses in DIMACS CNF former file named
+     * accoring to the constant {@link #CNF_OUT} and call the SAT solver.
+     * 
+     * Prints the solution given by the SAT solver, if exixsts and returns true,
+     * otherwise returns false.
+     * 
+     * @return true if solutoin found, otherwise false.
+     * @throws IOException
+     */
     public boolean solve() throws IOException {
         this.generateCNF();
-        writeCNF(this.cnf, "output.cnf");
-        String result = execCmd(PATH_SAT_SOLVER + " output.cnf");
+        writeCNF(this.cnf, CNF_OUT);
+        String result = execCmd(PATH_SAT_SOLVER + " " + CNF_OUT);
 
+        // solution line starts with 's'
         String s = result.substring(result.indexOf("\ns ") + 3, result.indexOf("\n", result.indexOf("\ns ") + 3));
         System.out.println("\nResult: " + s);
 
         if (s.equals("UNSATISFIABLE"))
             return false;
 
+        // assignment to the variables that satisfies SAT start with 'v'
         String v = result.substring(result.indexOf("\nv ") + 1, result.indexOf(" 0\n", result.indexOf("\nv ")));
         printSolution(v.replaceAll("v", ""));
         return true;
     }
 
+    /**
+     * Prints solution from the parameter given.
+     * 
+     * @param v solution, assignment of true(positive variable
+     *          number)/false(negative variable number) values to variables.
+     */
     private void printSolution(String v) {
         Scanner scanner = new Scanner(v);
         for (int i = 0; i < numberOfNodes && scanner.hasNext(); i++)
@@ -210,6 +319,7 @@ public class GraphSplit {
         for (int i = 0; i < 3; i++) {
             System.out.print("{ ");
             for (int j = 0; j < numberOfNodes; j++)
+                // positive number of variable => assignment of True value
                 if (variables[j][i] >= 0)
                     System.out.print((j + 1) + " ");
             System.out.print("} ");
@@ -217,12 +327,26 @@ public class GraphSplit {
         System.out.println();
     }
 
+    /**
+     * Writes string given to file.
+     * 
+     * @param str      string.
+     * @param filename name of file, where the string to be writen.
+     * @throws IOException
+     */
     public static void writeCNF(String str, String filename) throws IOException {
         Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename), "utf-8"));
         writer.write(str);
         writer.close();
     }
 
+    /**
+     * Executes the command given and returns its ouput in form of String.
+     * 
+     * @param cmd a command.
+     * @return output of the command given.
+     * @throws java.io.IOException
+     */
     public static String execCmd(String cmd) throws java.io.IOException {
         @SuppressWarnings("resource")
         Scanner scanner = new Scanner(Runtime.getRuntime().exec(cmd).getInputStream()).useDelimiter("\\A");
@@ -230,12 +354,19 @@ public class GraphSplit {
         return output;
     }
 
+    /**
+     * Generates a random graph based on the parameters-attributes:
+     * {@link #numberOfNodes}, {@link #negativeEdgesPercent}, {@link #density}. Sets
+     * attributes {@link #adjcencyMatrix} and {@link #signEdges}.
+     * 
+     * Assume that the values of the parameters are valid.
+     */
     private void generateGraph() {
         int edges = (int) Math.round(this.density * (this.numberOfNodes * (this.numberOfNodes - 1)) * 0.5);
-        // @TODO check valid values
         int negativeEdges = (int) Math.ceil(edges * negativeEdgesPercent);
         this.adjacencyMatrix = new char[numberOfNodes][numberOfNodes];
         this.signEdges = new char[numberOfNodes][numberOfNodes];
+
         // initialize arrays to no edges
         for (int i = 0; i < numberOfNodes; i++) {
             Arrays.fill(this.adjacencyMatrix[i], '0');
@@ -245,7 +376,7 @@ public class GraphSplit {
         int countEdges = 0;
         int countNegEdge = 0;
         Random rand = new Random();
-        int i,j;
+        int i, j;
         // randomly assign negative edges
         while (countEdges != edges && countNegEdge != negativeEdges) {
             i = rand.nextInt(this.numberOfNodes);
@@ -276,6 +407,15 @@ public class GraphSplit {
         }
     }
 
+    /**
+     * Promts user to enter parameters and returns an object of {@link GraphSplit}
+     * according to the input given.
+     * 
+     * Assume that the input is valid.
+     * 
+     * @return {@link GraphSplit} according to the input given.
+     * @throws IOException
+     */
     public static GraphSplit fromUser() throws IOException {
         Scanner scanner = new Scanner(System.in);
 
@@ -297,11 +437,15 @@ public class GraphSplit {
         return new GraphSplit(numberOfNodes, neg, pos, density);
     }
 
-    // private static void printMatrix(char[][] c, int s) {
-    // for (int i = 0; i < s; i++)
-    // System.out.println(c[i]);
-    // }
-
+    /**
+     * Writes attributes of the current object {@link GraphSplit} to file named
+     * after constant {@link #GENERATED_GRAPH} with the following order, each ending
+     * with newline: Number of nodes, Percentage of negative-value edges, Percentage
+     * of positive-value edges, Graph density, Adjacency Matrix, Adjacency Matrix
+     * with sign of each edge.
+     * 
+     * @throws IOException
+     */
     private void writeGraph() throws IOException {
         Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(GENERATED_GRAPH), "utf-8"));
         StringBuilder str = new StringBuilder();

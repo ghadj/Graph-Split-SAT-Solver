@@ -5,7 +5,7 @@ The solution to the problem is to split the graph into three sets, where nodes c
 
 ## About the program
 There are the following options to be given as arguments to the program:
-+ In case the first argument equals 0, the program promts user to give the path to the graph.txt file containing the following info:
++ In case the first argument equals 0, the program promts user to give the path to the graph.txt file containing the following parameters:
   1. Number of nodes
   2. Percentage of negative-value edges
   3. Percentage of positive-value edges
