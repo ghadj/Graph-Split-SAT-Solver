@@ -1,4 +1,5 @@
 # Graph-Split-SAT-Solver
+The program models the problem of a graph to be split into exactly three sets, based on problem constraints, to a boolean satisfiability problem (SAT) and uses SAT solver to find and present a solution, if exists.
 
 ## Problem
 The solution to the problem is to split the graph into exactly three sets, where nodes connected with positive edge are in the same set, and nodes with negative are in different. 

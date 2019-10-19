@@ -15,6 +15,10 @@ import java.util.Random;
 import java.util.Scanner;
 
 /**
+ * The program models the problem of a graph to be split into exactly three
+ * sets, based on problem constraints, to a boolean satisfiability problem (SAT)
+ * and uses SAT solver to find and present a solution, if exists.
+ * 
  * There are the following options to be given as arguments to the program:
  * 
  * In case the first argument equals 0, the program promts user to give the path
@@ -39,7 +43,7 @@ import java.util.Scanner;
  * @since 18-10-2019
  */
 public class GraphSplit {
-    static final String PATH_SAT_SOLVER = "../lingeling_solver/lingeling"; // SAT solver outside Graph-Split-SAT-Solver
+    static final String PATH_SAT_SOLVER = "../lingeling_solver/lingeling"; // SAT solver outside Graph-Split-SAT-Solver/
     static final String GENERATED_GRAPH = "graph_out.txt";
     static final String CNF_OUT = "output.cnf";
     private int numberOfNodes = 0;
@@ -90,7 +94,7 @@ public class GraphSplit {
     }
 
     /**
-     * Constructor og GraphSplit. Reads from the file given the following parameters
+     * Constructor of GraphSplit. Reads from the file given the following parameters
      * about the graph: Number of nodes, Percentage of negative-value edges,
      * Percentage of positive-value edges, Graph density, Adjacency Matrix,
      * Adjacency Matrix with sign of each edge. The parameters must be given in the
@@ -121,13 +125,14 @@ public class GraphSplit {
         adjacencyMatrix = new char[numberOfNodes][];
         for (int i = 0; i < numberOfNodes; i++)
             adjacencyMatrix[i] = br.readLine().replaceAll(" ", "").toCharArray();
-
+        br.readLine(); // empty line
         // sign of edges matrix
         signEdges = new char[numberOfNodes][];
         for (int i = 0; i < numberOfNodes; i++)
             signEdges[i] = br.readLine().replaceAll(" ", "").toCharArray();
 
         br.close();
+        writeGraph();
         setVariables();
     }
 
@@ -225,7 +230,7 @@ public class GraphSplit {
 
         br = new BufferedReader(new InputStreamReader(System.in));
 
-        System.out.println("Give path to file containing graph info:");
+        System.out.print("Give path to file containing graph info: ");
         filename = br.readLine();
 
         if (br != null)
@@ -266,9 +271,8 @@ public class GraphSplit {
     }
 
     /**
-     * Generates CNF clauses and sets cnf attribute, so that all the constraints of
-     * the problem are met.
-     * 
+     * Generates CNF clauses and sets the {@link #cnf} attribute, so that all the
+     * constraints of the problem are met.
      */
     private void generateCNF() {
         StringBuilder str = new StringBuilder();
@@ -292,9 +296,9 @@ public class GraphSplit {
 
     /**
      * Generates the cnf clauses, writes the clauses in DIMACS CNF former file named
-     * accoring to the constant {@link #CNF_OUT} and call the SAT solver.
+     * accoring to the constant {@link #CNF_OUT} and calls the SAT solver.
      * 
-     * Prints the solution given by the SAT solver, if exixsts and returns true,
+     * Prints the solution given by the SAT solver, if exists and returns true,
      * otherwise returns false.
      * 
      * @return true if solutoin found, otherwise false.
@@ -307,7 +311,7 @@ public class GraphSplit {
 
         // solution line starts with 's'
         String s = result.substring(result.indexOf("\ns ") + 3, result.indexOf("\n", result.indexOf("\ns ") + 3));
-        System.out.println("\nResult: " + s);
+        System.out.println("\n" + s);
 
         if (s.equals("UNSATISFIABLE"))
             return false;
@@ -330,7 +334,7 @@ public class GraphSplit {
             for (int j = 0; j < 3 && scanner.hasNext(); j++)
                 variables[i][j] = scanner.nextInt();
         scanner.close();
-
+        System.out.println("\nThe three (3) sets that can be generated based on the graph given are:");
         for (int i = 0; i < 3; i++) {
             System.out.print("{ ");
             for (int j = 0; j < numberOfNodes; j++)
@@ -389,11 +393,11 @@ public class GraphSplit {
         }
 
         int countEdges = 0;
-        int countNegEdge = 0;
+        int countNegEdges = 0;
         Random rand = new Random();
         int i, j;
         // randomly assign negative edges
-        while (countEdges != edges && countNegEdge != negativeEdges) {
+        while (countEdges != edges && countNegEdges != negativeEdges) {
             i = rand.nextInt(this.numberOfNodes);
             j = rand.nextInt(this.numberOfNodes);
 
@@ -402,7 +406,7 @@ public class GraphSplit {
                 this.adjacencyMatrix[j][i] = '1';
                 this.signEdges[i][j] = '-';
                 this.signEdges[j][i] = '-';
-                countNegEdge++;
+                countNegEdges++;
                 countEdges++;
             }
         }
@@ -472,7 +476,7 @@ public class GraphSplit {
 
         for (int i = 0; i < this.numberOfNodes; i++)
             str.append(String.valueOf(this.adjacencyMatrix[i]) + "\n");
-
+        str.append("\n");
         for (int i = 0; i < this.numberOfNodes; i++)
             str.append(String.valueOf(this.signEdges[i]) + "\n");
 
