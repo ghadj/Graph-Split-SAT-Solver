@@ -132,7 +132,7 @@ public class GraphSplit {
             signEdges[i] = br.readLine().replaceAll(" ", "").toCharArray();
 
         br.close();
-        writeGraph();
+        //writeGraph();
         setVariables();
     }
 
